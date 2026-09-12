@@ -1,0 +1,62 @@
+#!/usr/bin/env bash
+# ah — Agent Harness. One command centre for multi-project, multi-agent work.
+set -euo pipefail
+
+LIB="$(cd "$(dirname "${BASH_SOURCE[0]}")/lib" && pwd)"
+# shellcheck source=lib/common.sh
+. "${LIB}/common.sh"
+. "${LIB}/doctor.sh"
+. "${LIB}/task.sh"
+. "${LIB}/wt.sh"
+. "${LIB}/run.sh"
+. "${LIB}/trigger.sh"
+
+usage() {
+  cat <<EOF
+
+  ah — agent harness for ~/AI-Workspace
+
+  Setup
+    ah doctor                         check engines, auth, layout, disk
+    ah dash [port]                    live monitoring dashboard (default :7777)
+
+  Tasks
+    ah task new "<title>"             create a task from the template
+    ah task list                      all tasks with worktree/report state
+    ah task show <task-id>            print one task
+
+  Isolation
+    ah wt add <task-id> <project>     git worktree + branch agent/<task-id>
+    ah wt list                        active worktrees and dirty state
+    ah wt rm <task-id>                remove a worktree (asks if dirty)
+
+  Work
+    ah recon <project>                read-only survey of a new repo
+    ah run <role> <task-id>           interactive agent session
+    ah run --exec <role> <task-id>    unattended, transcript to reports/
+
+  Triggers
+    ah trigger list                   scheduled work and install state
+    ah trigger run <id>               run one now
+    ah trigger install <id>           schedule it via launchd
+    ah trigger uninstall <id>         unschedule it
+
+  Roles   ${VALID_ROLES}
+          Raja=lead  Ster=qa  Benteng=devops  Kuda=review
+          Peluncur 1=frontend  Peluncur 2=backend  Pion=docs
+  Engines codex (default) · claude (review, qa) · override with AH_ENGINE
+
+EOF
+}
+
+case "${1:-help}" in
+  doctor) shift; cmd_doctor "$@" ;;
+  dash)   shift; exec python3 "${LIB}/dash.py" "$@" ;;
+  task)   shift; cmd_task   "$@" ;;
+  wt)     shift; cmd_wt     "$@" ;;
+  run)    shift; cmd_run    "$@" ;;
+  recon)  shift; cmd_recon  "$@" ;;
+  trigger) shift; cmd_trigger "$@" ;;
+  help|-h|--help) usage ;;
+  *) usage; die "unknown command: $1" ;;
+esac

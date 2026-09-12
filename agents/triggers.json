@@ -1,0 +1,40 @@
+{
+  "triggers": [
+    {
+      "id": "standup",
+      "label": "Morning floor standup",
+      "schedule": "daily 09:00",
+      "role": "lead",
+      "enabled": true,
+      "last_run": "",
+      "prompt": "Review every open task in ~/AI-Workspace/agents/tasks. For each: state the role assigned, whether a worktree exists, how many acceptance criteria are met, and what is blocking it. Do not change any file. End with the three tasks I should push on today and why."
+    },
+    {
+      "id": "health",
+      "label": "Repository health check",
+      "schedule": "weekly Mon 09:00",
+      "role": "devops",
+      "enabled": true,
+      "last_run": "",
+      "prompt": "For every project under ~/AI-Workspace/projects: report stale branches, uncommitted work, failing or missing test commands, and dependencies with known advisories. Read-only. Never merge, push, or install. Output a Markdown table ordered by severity."
+    },
+    {
+      "id": "drift",
+      "label": "Documentation drift check",
+      "schedule": "weekly Fri 16:00",
+      "role": "docs",
+      "enabled": true,
+      "last_run": "",
+      "prompt": "Compare each project's AGENTS.md and README against the actual code. Flag every command that no longer works, every documented path that no longer exists, and every behaviour change since the last edit. Propose the exact diff but do not apply it."
+    },
+    {
+      "id": "sweep",
+      "label": "Stale worktree sweep",
+      "schedule": "weekly Sun 20:00",
+      "role": "lead",
+      "enabled": true,
+      "last_run": "",
+      "prompt": "List every worktree under ~/AI-Workspace/worktrees with no commit in the last 7 days. For each, say whether the work looks finished, abandoned, or blocked, and recommend keep or remove. Remove nothing yourself."
+    }
+  ]
+}

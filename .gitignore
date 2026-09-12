@@ -1,0 +1,18 @@
+# Live run state — noisy, regenerated, sometimes large
+agents/.jobs/
+agents/reports/*.log
+agents/reports/*.out
+agents/reports/*.err
+agents/screenshots/
+
+# Worktrees and onboarded repositories carry their own git history
+worktrees/
+projects/*/
+!projects/*/.gitkeep
+
+archives/*
+!archives/.gitkeep
+
+.DS_Store
+__pycache__/
+*.pyc

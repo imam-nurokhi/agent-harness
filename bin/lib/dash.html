@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Command Center — Agent Harness</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%23c2872a'/%3E%3Crect x='4' y='4' width='8' height='8' fill='%232e2519'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="dash.css">
+<script>window.AH_TOKEN = "__AH_TOKEN__";</script>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo">🏢</div>
+    <div>
+      <h1>Command Center</h1>
+      <div class="sub" id="sub">the floor is quiet</div>
+    </div>
+    <div class="spacer"></div>
+    <div class="live" id="live"><span class="pulse"></span><span id="stamp">connecting…</span></div>
+  </header>
+
+  <nav id="nav"></nav>
+
+  <!-- ---------------------------------------------------------- terminal -->
+  <section id="tab-terminal" class="on">
+    <div class="term-grid">
+      <aside class="joblist">
+        <div class="jl-h">Runs</div>
+        <div id="jobs"></div>
+      </aside>
+
+      <div class="term-main">
+        <div class="term-bar">
+          <span class="tstat" id="termstat">idle</span>
+          <span id="termtitle" class="muted">no run selected</span>
+          <span class="spacer"></span>
+          <button class="btn sm" id="btnfollow" onclick="toggleFollow()">following</button>
+          <button class="btn sm danger" id="btnstop" onclick="stopJob()" disabled>stop</button>
+        </div>
+        <pre class="term" id="term">Select a run on the left, or dispatch one below.
+
+Every run gets the same contract the CLI builds: workspace rules,
+the common role preamble, the role file, then the task.</pre>
+      </div>
+    </div>
+
+    <div class="queue">
+      <div class="q-h">
+        <span>Queue</span>
+        <span class="muted" id="qhint">pick who does the work</span>
+      </div>
+      <div class="q-row" id="rolepick"></div>
+      <div class="q-row">
+        <select id="qtask" class="sel"><option value="">— no task, ad-hoc instruction —</option></select>
+      </div>
+      <textarea id="qtext" rows="3" placeholder="Message the agent. With a task selected this is an extra instruction on top of the task file."></textarea>
+      <div class="q-row end">
+        <span class="muted" id="qerr"></span>
+        <button class="btn" onclick="newTaskPrompt()">+ new task</button>
+        <button class="btn primary" onclick="dispatch()">send →</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ------------------------------------------------------------- floor -->
+  <section id="tab-floor">
+    <div class="floor">
+      <div class="floor-hd">
+        <span class="t">The Floor</span>
+        <span class="d" id="floorline"></span>
+      </div>
+      <div class="desks" id="desks"></div>
+    </div>
+    <h2>Who is who <b>chess pieces</b></h2>
+    <div class="hint">Every role is a chess piece. Click a desk to brief that agent.</div>
+    <div class="legend" id="legend"></div>
+    <h2>Right now</h2>
+    <div class="stats" id="floorstats"></div>
+  </section>
+
+  <!-- ------------------------------------------------------------- tasks -->
+  <section id="tab-tasks">
+    <div class="hint">Columns come from live state: a task is DOING once it has a worktree, NEEDS REVIEW when every acceptance criterion is met but nothing has been reported, DONE once a report or transcript exists.</div>
+    <div class="kb" id="kb"></div>
+  </section>
+
+  <!-- ----------------------------------------------------------- monitor -->
+  <section id="tab-monitor">
+    <h2>Health</h2>
+    <div class="stats" id="health"></div>
+    <h2>Worktrees <b id="wcount">0</b></h2>
+    <div id="wt"></div>
+    <h2>Projects <b id="pcount">0</b></h2>
+    <div id="pj"></div>
+    <h2>Reports &amp; transcripts <b id="rcount">0</b></h2>
+    <div id="rp"></div>
+  </section>
+
+  <!-- ---------------------------------------------------------- triggers -->
+  <section id="tab-triggers">
+    <div class="hint">Work that starts without you typing. Defined in <code>agents/triggers.json</code>. Schedule one with <code>ah trigger install &lt;id&gt;</code>; "run now" here dispatches it immediately.</div>
+    <div id="trg"></div>
+  </section>
+
+  <!-- ---------------------------------------------------------- activity -->
+  <section id="tab-activity">
+    <h2>Everything that changed</h2>
+    <div class="feed" id="feed"></div>
+  </section>
+</div>
+
+<div class="dock" id="dock"></div>
+<div id="modal" onclick="if(event.target===this)closeModal()"><div class="box" id="mbox"></div></div>
+<script src="dash.js"></script>
+</body>
+</html>
