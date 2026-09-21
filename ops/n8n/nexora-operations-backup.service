@@ -1,0 +1,9 @@
+[Unit]
+Description=Backup the isolated Nexora operations n8n stack
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+User=root
+ExecStart=/usr/local/sbin/nexora-operations-backup

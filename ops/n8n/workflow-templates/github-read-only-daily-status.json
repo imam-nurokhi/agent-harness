@@ -1,0 +1,121 @@
+{
+  "name": "Nexora GitHub Read-Only Daily Status (review template)",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "a7a0c5fd-4adc-4ec7-9cdd-7a04bfed5201",
+      "name": "Manual approval required",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -520,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://api.github.com/repos/REPLACE_WITH_OWNER/REPLACE_WITH_REPOSITORY/pulls?state=open&per_page=100",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "githubApi",
+        "options": {}
+      },
+      "id": "39076f13-1ca1-491a-b055-da389bee86d6",
+      "name": "Read open pull requests",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -160,
+        -160
+      ],
+      "credentials": {
+        "githubApi": {
+          "name": "REVIEW: GitHub read-only credential"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://api.github.com/repos/REPLACE_WITH_OWNER/REPLACE_WITH_REPOSITORY/actions/runs?status=failure&per_page=20",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "githubApi",
+        "options": {}
+      },
+      "id": "2a8145a0-4eb7-48a2-83d3-54c69a11ad30",
+      "name": "Read failed workflow runs",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -160,
+        0
+      ],
+      "credentials": {
+        "githubApi": {
+          "name": "REVIEW: GitHub read-only credential"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://api.github.com/repos/REPLACE_WITH_OWNER/REPLACE_WITH_REPOSITORY/issues?state=open&per_page=100",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "githubApi",
+        "options": {}
+      },
+      "id": "0761055f-5b32-4c56-8d38-330dfc5715f3",
+      "name": "Read open issues",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -160,
+        160
+      ],
+      "credentials": {
+        "githubApi": {
+          "name": "REVIEW: GitHub read-only credential"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Manual approval required": {
+      "main": [
+        [
+          {
+            "node": "Read open pull requests",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Read failed workflow runs",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Read open issues",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "a32a30fd-424c-4898-943c-cb79cfd703c3",
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": [
+    {
+      "name": "manual"
+    }
+  ]
+}

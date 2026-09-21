@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+set -euo pipefail
+umask 077
+
+readonly STACK_DIR=/opt/nexora-operations/n8n
+readonly BACKUP_ROOT=/var/backups/nexora-operations
+readonly STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
+readonly DESTINATION="${BACKUP_ROOT}/${STAMP}"
+readonly TEMPORARY_DESTINATION="${BACKUP_ROOT}/.${STAMP}.tmp"
+readonly N8N_VOLUME=/var/lib/docker/volumes/nexora-operations_n8n_data/_data
+
+cleanup() {
+  rm -rf "$TEMPORARY_DESTINATION"
+}
+
+trap cleanup ERR
+mkdir -p "$TEMPORARY_DESTINATION"
+cd "$STACK_DIR"
+
+docker compose --env-file .env -f compose.yaml exec -T postgres \
+  pg_dump -U n8n -Fc n8n >"${TEMPORARY_DESTINATION}/database.dump"
+tar -C "$N8N_VOLUME" -czf "${TEMPORARY_DESTINATION}/n8n-data.tar.gz" .
+cp .env "${TEMPORARY_DESTINATION}/stack.env"
+mv "$TEMPORARY_DESTINATION" "$DESTINATION"
+
+find "$BACKUP_ROOT" -mindepth 1 -maxdepth 1 -type d -mtime +13 -exec rm -rf {} +

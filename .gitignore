@@ -1,3 +1,33 @@
+# Secrets — never commit, regardless of scope
+.env
+.env.*
+.opencode-env
+*.opencode-env
+*.pem
+*.key
+credentials.json
+auth.json
+
+# Harness ephemeral runtime state (regenerated locally)
+agents/claims/
+agents/memory/
+agents/chat/
+agents/approvals/
+agents/.engine.lock
+agents/.telegram/bot.log
+agents/.telegram/watch.json
+
+# Generated / backup / scratch noise
+*.log
+*.out
+*.err
+*.bak*
+*.orig
+tmp/
+tmp*/
+__pycache__/
+*.pyc
+
 # Live run state — noisy, regenerated, sometimes large
 agents/.jobs/
 agents/reports/*.log

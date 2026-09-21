@@ -22,6 +22,17 @@ This file defines baseline rules for every project managed through the agent har
   to require it.
 - Never add the home directory as a project root.
 
+## Git rules
+
+- **Never push to `main`, `master`, `production` or `prod`.** Those are owner-controlled.
+  Push to `dev` or `staging`. A `pre-push` hook enforces this in every onboarded repo.
+- **Pull before push.** Integrate the remote before pushing: `git pull --rebase <remote>
+  <branch>`, resolve conflicts, re-run the tests, then push. The same hook blocks a push
+  from a branch that is behind its remote.
+- Never use `--no-verify`. The hooks exist because the rules must hold without you
+  remembering them.
+- Push only when the human has asked for it. Committing locally is not permission to push.
+
 ## Required workflow
 
 1. Inspect the project and identify its stack.
@@ -41,6 +52,13 @@ This file defines baseline rules for every project managed through the agent har
 - No unrelated files are changed.
 - Documentation is updated when behavior or setup changes.
 - Final report is complete.
+
+## Cross-repo integrations (e.g. SUPPORT ↔ NEXONE ↔ Slack)
+
+- Root-cause first: reproduce with a failing test (Red) before fixing (Green). Never fix blind.
+- Respect each side's loop-prevention laws (echo guards, terminal states, attribution accounts) — read both repos' CLAUDE.md/AGENTS.md integration sections before touching sync code.
+- Record in three places so any agent in any session stays oriented: the involved repos' docs, a harness report under `agents/reports/`, and `~/memory/` (project-memory + decisions).
+- Live verification needs owner-controlled pieces (secrets, memberships, merges) — state explicitly what you need from the human instead of working around it.
 
 ## Project classification
 

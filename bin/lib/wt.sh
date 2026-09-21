@@ -14,6 +14,7 @@ wt_add() {
   local id="$1" project="$2" base="${3:-}"
   [ -n "$id" ] && [ -n "$project" ] || die 'usage: ah wt add <task-id> <project-path> [base-branch]'
   require_task "$id"
+  assert_claim_free "$id"
 
   project=$(cd "$project" 2>/dev/null && pwd -P) || die "no such directory: $2"
   assert_allowed_path "$project"
@@ -65,6 +66,11 @@ wt_rm() {
   [ -n "$id" ] || die 'usage: ah wt rm <task-id>'
   local dest; dest=$(worktree_path "$id")
   [ -d "$dest" ] || die "no worktree for ${id}"
+
+  if pgrep -f "$dest" >/dev/null 2>&1; then
+    die "an agent is still running inside ${id}. Stop it first (ah bot /stop, or kill it),
+       otherwise its working directory vanishes mid-task."
+  fi
 
   if [ -n "$(git -C "$dest" status --porcelain 2>/dev/null)" ]; then
     warn "worktree ${id} has uncommitted changes:"

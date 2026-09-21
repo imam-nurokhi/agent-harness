@@ -1,16 +1,6 @@
 #!/usr/bin/env bash
 # ah run — launch an engine in a task's worktree with the role contract loaded.
 
-# Review work goes to a different provider than the implementation, so the
-# reviewer is not grading its own homework.
-engine_for_role() {
-  [ -n "${AH_ENGINE:-}" ] && { printf '%s' "$AH_ENGINE"; return; }
-  case "$1" in
-    review|qa) printf 'claude' ;;
-    *)         printf 'codex'  ;;
-  esac
-}
-
 build_prompt() {
   local role="$1" id="$2" cwd="$3"
   local ROLE_UC
@@ -54,6 +44,11 @@ cmd_run() {
   require_role "$role"
   require_task "$id"
 
+  # Hold the task for as long as this run lives, so a second agent cannot start
+  # inside the same worktree. The claim dies with the process, not with the task.
+  claim_bind "$id" "run/${role}" $$
+  trap 'claim_release_own "$id"' EXIT
+
   local cwd
   cwd=$(worktree_path "$id")
   if [ ! -d "$cwd" ]; then
@@ -64,6 +59,7 @@ cmd_run() {
     fi
   fi
   assert_allowed_path "$cwd"
+  assert_execution_allowed "$cwd"
 
   local engine prompt
   engine=$(engine_for_role "$role")
@@ -79,21 +75,12 @@ cmd_run() {
   printf '\n'
 
   cd "$cwd" || die "cannot enter ${cwd}"
-  # Codex refuses to run outside a Git repo unless told otherwise.
-  local gitflag=""
-  [ -d "${cwd}/.git" ] || gitflag="--skip-git-repo-check"
 
   if [ "$exec_mode" -eq 1 ]; then
-    case "$engine" in
-      codex)  codex exec $gitflag "$prompt" 2>&1 | tee "$log" ;;
-      claude) claude -p "$prompt"  2>&1 | tee "$log" ;;
-    esac
+    engine_exec "$engine" "$role" "$prompt" 2>&1 | tee "$log"
     ok "finished — transcript at ${log}"
   else
-    case "$engine" in
-      codex)  codex $gitflag "$prompt" ;;
-      claude) claude "$prompt" ;;
-    esac
+    engine_interactive "$engine" "$role" "$prompt"
   fi
 }
 
@@ -103,6 +90,7 @@ cmd_recon() {
   [ -n "$project" ] || die 'usage: ah recon <project-path>'
   project=$(cd "$project" 2>/dev/null && pwd -P) || die "no such directory: $1"
   assert_allowed_path "$project"
+  assert_execution_allowed "$project"
 
   mkdir -p "$REPORTS_DIR"
   local name out
@@ -114,7 +102,7 @@ cmd_recon() {
   printf '\n'
 
   cd "$project" || die "cannot enter ${project}"
-  codex exec "$(cat "${PROMPTS_DIR}/01-recon.md")
+  engine_exec "$(engine_for_role docs)" docs "$(cat "${PROMPTS_DIR}/01-recon.md")
 
 Target repository: ${project}
 You are strictly read-only." 2>&1 | tee "$out"

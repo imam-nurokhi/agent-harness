@@ -1,0 +1,1 @@
+{"provider":"claude","model":"openagentic/muse-spark-1.3-free","mode":"auto","updated_at":"2026-09-22T18:55:00Z","updated_by":"plan-exec-2","note":"auto = pindah sendiri saat limit; manual via /pakai","switch_reason":"init-auto","last_auto_switch_at":null,"auto_flip_times":[]}

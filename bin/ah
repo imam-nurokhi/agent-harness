@@ -6,10 +6,16 @@ LIB="$(cd "$(dirname "${BASH_SOURCE[0]}")/lib" && pwd)"
 # shellcheck source=lib/common.sh
 . "${LIB}/common.sh"
 . "${LIB}/doctor.sh"
+. "${LIB}/claim.sh"
 . "${LIB}/task.sh"
 . "${LIB}/wt.sh"
 . "${LIB}/run.sh"
 . "${LIB}/trigger.sh"
+. "${LIB}/supervise.sh"
+. "${LIB}/bot.sh"
+. "${LIB}/protect.sh"
+. "${LIB}/resume.sh"
+. "${LIB}/feedback.sh"
 
 usage() {
   cat <<EOF
@@ -18,17 +24,31 @@ usage() {
 
   Setup
     ah doctor                         check engines, auth, layout, disk
+    ah engine                         which engine runs, and what was refused
+    ah engine clear <name>            use it again after access is restored
+    ah resume                         resume one stalled task now
+    ah resume install                 run a resume sweep every hour
     ah dash [port]                    live monitoring dashboard (default :7777)
 
   Tasks
     ah task new "<title>"             create a task from the template
     ah task list                      all tasks with worktree/report state
     ah task show <task-id>            print one task
+    ah task claim <task-id> ["why"]   hold a task so another agent leaves it alone
+    ah task release <task-id>         let it go (--force breaks someone else's)
 
   Isolation
     ah wt add <task-id> <project>     git worktree + branch agent/<task-id>
     ah wt list                        active worktrees and dirty state
     ah wt rm <task-id>                remove a worktree (asks if dirty)
+
+  Guardrails
+    ah protect install                block pushes to main/master/production/prod
+    ah protect status                 per-project hook state
+    ah protect uninstall              remove the guard
+
+  Widget feedback
+    ah feedback [app] [--since DAYS]  questions, KB gaps, findings, sign-off
 
   Work
     ah recon <project>                read-only survey of a new repo
@@ -38,8 +58,14 @@ usage() {
   Triggers
     ah trigger list                   scheduled work and install state
     ah trigger run <id>               run one now
+    ah trigger memo <id>              what recent runs of it reported
     ah trigger install <id>           schedule it via launchd
     ah trigger uninstall <id>         unschedule it
+
+  Telegram
+    ah bot start                      control the harness from your phone
+    ah bot pair                       issue a one-time pairing code
+    ah bot status | stop | log
 
   Roles   ${VALID_ROLES}
           Raja=lead  Ster=qa  Benteng=devops  Kuda=review
@@ -51,12 +77,17 @@ EOF
 
 case "${1:-help}" in
   doctor) shift; cmd_doctor "$@" ;;
+  engine) shift; cmd_engine "$@" ;;
+  resume) shift; cmd_resume "$@" ;;
   dash)   shift; exec python3 "${LIB}/dash.py" "$@" ;;
   task)   shift; cmd_task   "$@" ;;
   wt)     shift; cmd_wt     "$@" ;;
   run)    shift; cmd_run    "$@" ;;
   recon)  shift; cmd_recon  "$@" ;;
   trigger) shift; cmd_trigger "$@" ;;
+  bot)    shift; cmd_bot     "$@" ;;
+  protect) shift; cmd_protect "$@" ;;
+  feedback) shift; cmd_feedback "$@" ;;
   help|-h|--help) usage ;;
   *) usage; die "unknown command: $1" ;;
 esac

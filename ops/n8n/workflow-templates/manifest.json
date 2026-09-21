@@ -1,0 +1,24 @@
+{
+  "templates": [
+    {
+      "id": "github-read-only-daily-status",
+      "file": "github-read-only-daily-status.json",
+      "status": "review",
+      "owner": "Imam",
+      "data_classification": "internal engineering metadata",
+      "credential_scope": "Dedicated GitHub fine-grained credential: pull requests read, actions read, issues read; no contents write, administration, webhook, workflow dispatch, or deployment scope.",
+      "trigger": "manual",
+      "outputs": [
+        "n8n execution view only; no external notification is configured"
+      ],
+      "activation_prerequisites": [
+        "Owner creates a dedicated read-only GitHub credential in n8n",
+        "Repository placeholders are replaced and reviewed",
+        "Manual test uses non-sensitive data and confirms redaction",
+        "Failure, retry, and notification behavior are reviewed",
+        "Owner explicitly approves import and activation"
+      ],
+      "rollback": "Disable or delete the workflow in n8n, revoke the dedicated GitHub credential, and review executions for redacted error evidence."
+    }
+  ]
+}
