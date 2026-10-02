@@ -9,10 +9,13 @@ import subprocess
 import time
 from pathlib import Path
 
+import operations
+
 WORKSPACE = Path(os.environ.get("AH_WORKSPACE", Path.home() / "AI-Workspace"))
 AGENTS = WORKSPACE / "agents"
 TASKS = AGENTS / "tasks"
 REPORTS = AGENTS / "reports"
+CLAIMS = AGENTS / "claims"
 ROLES = AGENTS / "roles"
 WORKTREES = WORKSPACE / "worktrees"
 PROJECTS = WORKSPACE / "projects"
@@ -29,9 +32,22 @@ def _git(cwd: Path, *args: str) -> str:
         return ""
 
 
+#: A task file starts life as `agents/task-templates/task.md`, whose metadata
+#: lines carry a MENU of options ("lead | frontend | backend | …") or an angle
+#: bracket hint ("<name>"). Nothing else distinguished an unfilled template from
+#: a filled one, so on 2026-09-21 a task still holding the menu was read as a
+#: role literally named "lead | frontend | …". The sweep then tried to start it
+#: once an hour, forever. An unfilled field is not a value; it is the absence of
+#: one, and every caller is better off seeing "".
+_PLACEHOLDER = re.compile(r"<[^>]*>|\|")
+
+
 def _field(text: str, key: str) -> str:
     m = re.search(rf"^- \*\*{key}:\*\* *(.+)$", text, re.M)
-    return m.group(1).strip().strip("`") if m else ""
+    if not m:
+        return ""
+    value = m.group(1).strip().strip("`")
+    return "" if _PLACEHOLDER.search(value) else value
 
 
 def _task_status(task_id: str, has_wt: bool, has_report: bool, done: int, total: int) -> str:
@@ -42,6 +58,19 @@ def _task_status(task_id: str, has_wt: bool, has_report: bool, done: int, total:
     if has_wt:
         return "active"
     return "planned"
+
+
+def claim(task_id: str) -> dict | None:
+    """Who is holding this task, if anyone. Written by `ah task claim`/`ah run`."""
+    path = CLAIMS / f"{task_id}.claim"
+    if not path.exists():
+        return None
+    held = {}
+    for line in path.read_text(errors="replace").splitlines():
+        key, _, value = line.partition("=")
+        if key.strip():
+            held[key.strip()] = value.strip()
+    return held or None
 
 
 def tasks() -> list[dict]:
@@ -78,6 +107,7 @@ def tasks() -> list[dict]:
             "criteria_total": len(crit),
             "checks": [{"done": c.lower() == "x", "text": t} for c, t in checks],
             "has_worktree": has_wt,
+            "claim": claim(tid),
             "logs": [l.name for l in logs],
             "status": _task_status(tid, has_wt, has_report, done, len(crit)),
             "mtime": f.stat().st_mtime,
@@ -151,10 +181,11 @@ def _describe_project(repo: Path, klass: str) -> dict:
         "branch": _git(repo, "branch", "--show-current") if is_git else "",
         "dirty": dirty,
         "has_agents_md": (repo / "AGENTS.md").exists(),
+        "held": is_held(klass, repo.name),
     }
 
 
-def projects() -> list[dict]:
+def projects(workable_only: bool = False) -> list[dict]:
     """A project is either projects/<class>/<repo> or a repo sitting directly
     at projects/<name>. Never descend into .git or other dot directories."""
     out = []
@@ -162,13 +193,55 @@ def projects() -> list[dict]:
         return out
     for entry in sorted(p for p in PROJECTS.iterdir()
                         if p.is_dir() and not p.name.startswith(".")):
+        if workable_only and is_held(entry.name, "*"):
+            continue
         if (entry / ".git").exists():
+            if workable_only and is_held(entry.name, entry.name):
+                continue
             out.append(_describe_project(entry, entry.name))
             continue
         for repo in sorted(p for p in entry.iterdir()
                            if p.is_dir() and not p.name.startswith(".")):
+            if workable_only and is_held(entry.name, repo.name):
+                continue
             out.append(_describe_project(repo, entry.name))
     return out
+
+
+SCOPE = AGENTS / ".scope"
+
+
+def _hold_patterns() -> list[str]:
+    if not SCOPE.exists():
+        return []
+    out = []
+    for line in SCOPE.read_text().splitlines():
+        line = line.strip()
+        if line.startswith("HOLD "):
+            out.append(line[5:].strip())
+    return out
+
+
+def is_held(klass: str, name: str) -> bool:
+    """True when a project is registered but agents may not run against it."""
+    import fnmatch
+    rel = f"{klass}/{name}"
+    return any(fnmatch.fnmatch(rel, pat) for pat in _hold_patterns())
+
+
+def workable_projects() -> list[dict]:
+    """Projects an agent is currently allowed to act on."""
+    return projects(workable_only=True)
+
+
+def engines() -> dict:
+    """Which engine would launch right now, and who has refused this account.
+
+    Imported lazily: `engine.py` imports this module, so importing `engine` at
+    module load time here would be circular.
+    """
+    import engine as _engine
+    return {"chosen": _engine.pick(), "refused": _engine.blocked()}
 
 
 def health() -> dict:
@@ -338,15 +411,32 @@ def triggers() -> list[dict]:
             "prompt": tr.get("prompt", ""),
             "enabled": bool(tr.get("enabled", True)),
             "last_run": tr.get("last_run", ""),
-            "installed": _launchd_installed(tr.get("id", "")),
+            "installed": _trigger_installed(tr.get("id", "")),
         })
     return out
 
 
-def _launchd_installed(tid: str) -> bool:
+def _trigger_installed(tid: str) -> bool:
+    """Is this trigger actually scheduled — on either supervisor?
+
+    Until 2026-09-21 this only looked for a launchd plist, so on this Linux
+    host every trigger read as uninstalled, including `standup`, which has a
+    live systemd timer and runs every morning. `bin/lib/supervise.sh` learned
+    about systemd when the scheduler was fixed on 2026-09-17; the status reader
+    did not, and the two halves quietly disagreed for four days.
+
+    The systemd path mirrors `_sv_unit_dir` in supervise.sh exactly, including
+    its XDG_CONFIG_HOME handling — reading from a hardcoded ~/.config is how
+    that pair would drift apart again.
+    """
     if not tid:
         return False
-    plist = Path.home() / "Library" / "LaunchAgents" / f"com.ah.trigger.{tid}.plist"
+    label = f"com.ah.trigger.{tid}"
+    config_home = os.environ.get("XDG_CONFIG_HOME") or str(Path.home() / ".config")
+    systemd_timer = Path(config_home) / "systemd" / "user" / f"{label}.timer"
+    if systemd_timer.exists():
+        return True
+    plist = Path.home() / "Library" / "LaunchAgents" / f"{label}.plist"
     return plist.exists()
 
 
@@ -361,6 +451,7 @@ def snapshot() -> dict:
         "projects": projects(),
         "activity": activity(),
         "agents": agents(),
+        "operations": operations.snapshot(),
         "triggers": triggers(),
         "summary": {
             "tasks_total": len(t),

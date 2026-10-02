@@ -75,7 +75,15 @@ class Handler(BaseHTTPRequestHandler):
                 self._send((HERE / name).read_bytes(), STATIC[name])
             elif path == "/api/state":
                 snap = state.snapshot()
+                # A detached job that failed on the engine has nobody to
+                # reconsider it. This read polls anyway, so it is where the
+                # retry gets its chance. It must never break the dashboard.
+                try:
+                    jobs.tick()
+                except Exception:
+                    pass
                 snap["jobs"] = jobs.listing()
+                snap["engines"] = state.engines()
                 self._json(snap)
             elif path == "/api/tail":
                 jid = (qs.get("id") or [""])[0]
@@ -139,10 +147,56 @@ class Handler(BaseHTTPRequestHandler):
         pass
 
 
+def _ours(port: int) -> bool:
+    """Is something on this port already our Command Center?"""
+    import urllib.request
+    try:
+        with urllib.request.urlopen(f"http://127.0.0.1:{port}/api/state", timeout=2) as r:
+            return "workspace" in json.loads(r.read()).get("health", {})
+    except Exception:
+        return False
+
+
+def _serve(port: int) -> ThreadingHTTPServer | None:
+    try:
+        return ThreadingHTTPServer(("127.0.0.1", port), Handler)
+    except OSError as exc:
+        if exc.errno in (48, 98):      # EADDRINUSE
+            return None
+        raise
+
+
 def main() -> None:
-    port = int(sys.argv[1]) if len(sys.argv) > 1 else PORT
+    wanted = int(sys.argv[1]) if len(sys.argv) > 1 else PORT
+
+    srv = _serve(wanted)
+    port = wanted
+
+    if srv is None:
+        if _ours(wanted):
+            url = f"http://127.0.0.1:{wanted}/"
+            print(f"\n  Command Center is already running  ->  {url}")
+            print("  Opening it. To restart instead:")
+            print(f"    lsof -ti:{wanted} | xargs kill\n")
+            try:
+                webbrowser.open(url)
+            except Exception:
+                pass
+            return
+
+        # Something else owns the port. Step aside rather than fight it.
+        for candidate in range(wanted + 1, wanted + 12):
+            srv = _serve(candidate)
+            if srv:
+                port = candidate
+                print(f"\n  Port {wanted} is taken by another program — using {port}.")
+                break
+        else:
+            print(f"\n  Ports {wanted}-{wanted + 11} are all busy. Free one, or run:")
+            print(f"    ah dash <port>\n")
+            sys.exit(1)
+
     url = f"http://127.0.0.1:{port}/"
-    srv = ThreadingHTTPServer(("127.0.0.1", port), Handler)
     print(f"\n  Command Center  ->  {url}")
     print("  Local only. Mutating calls are token-guarded.")
     print("  Ctrl-C to stop\n")

@@ -142,6 +142,11 @@ tbody tr:hover td{background:var(--card2)}
 .stat .v{font-size:21px;font-weight:700;margin-top:3px;letter-spacing:-.5px}
 .stat .s{font-size:10.5px;color:var(--dim)}
 .v.ok{color:var(--green)} .v.warn{color:var(--amber)} .v.bad{color:var(--red)}
+.oplinks{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 4px}
+.oplink{display:inline-flex;align-items:center;gap:7px;background:var(--card);border:1.5px solid var(--line2);
+  padding:5px 8px;color:var(--ink);text-decoration:none;font-size:11px;box-shadow:0 1px 0 var(--line2)}
+.oplink:hover{border-color:var(--ink);background:var(--card2)}
+.oplink span{color:var(--faint);font-size:10px}.oplink.disabled{opacity:.7;cursor:not-allowed}
 
 .feed{background:var(--card);border:2px solid var(--ink);box-shadow:var(--shadow);
       max-height:420px;overflow:auto}

@@ -127,8 +127,19 @@ function monitor(d) {
   const h = d.health;
   const eng = Object.entries(h.engines).filter(([, v]) => v).length;
   const dk = h.disk_pct >= 95 ? 'bad' : h.disk_pct >= 85 ? 'warn' : 'ok';
+
+  // An engine an org has disabled must not just show up as a red job — it
+  // needs its own row here, with the exact command that clears it, or the
+  // operator is left staring at a failure with no next action.
+  const refused = Object.entries((d.engines || {}).refused || {});
+  const refusedRows = refused.map(([name, info]) => {
+    const reason = (info.reason || '').slice(0, 80);
+    return [`${name} refused`, 'blocked', `${reason} — fix: ah engine clear ${name}`, 'bad'];
+  });
+
   $('#health').innerHTML = [
     ['Engines', `${eng}/5`, h.codex_auth ? 'codex authed' : 'codex NOT authed', h.codex_auth ? 'ok' : 'bad'],
+    ...refusedRows,
     ['Roles', h.roles.length, 'contracts loaded', 'ok'],
     ['Guardrail', h.documents_guard ? 'ON' : 'OFF', '~/Documents blocked', h.documents_guard ? 'ok' : 'bad'],
     ['Disk free', h.disk_free_gb + 'G', h.disk_pct + '% used', dk],
@@ -136,6 +147,17 @@ function monitor(d) {
   ].map(([k, v, s, cl]) =>
     `<div class="stat"><div class="k">${k}</div><div class="v ${cl}">${esc(v)}</div>
      <div class="s">${esc(s)}</div></div>`).join('');
+
+  const ops = d.operations || { services: [], links: [] };
+  $('#operations').innerHTML = ops.services.map(service =>
+    `<div class="stat"><div class="k">${esc(service.label)}</div>
+      <div class="v ${service.status === 'ok' ? 'ok' : service.status === 'critical' ? 'bad' : 'warn'}">${esc(service.status)}</div>
+      <div class="s">${esc(service.detail)}</div></div>`).join('')
+    || `<div class="empty">No operations state available.</div>`;
+  $('#oplinks').innerHTML = ops.links.map(link => link.href
+    ? `<a class="oplink" href="${esc(link.href)}" target="_blank" rel="noopener noreferrer">${esc(link.label)} <span>open</span></a>`
+    : `<span class="oplink disabled">${esc(link.label)} <span>${esc(link.status)}</span></span>`
+  ).join('');
 
   $('#wcount').textContent = d.worktrees.length;
   $('#wt').innerHTML = d.worktrees.length ? `<table><thead><tr>

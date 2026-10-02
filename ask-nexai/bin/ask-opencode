@@ -1,0 +1,130 @@
+#!/usr/bin/env python3
+"""Tanya-jawab via OpenAgentic (OpenAI-compatible) untuk @AskNexAIBot.
+
+Satu-satunya jalan network yang diizinkan sesi @AskNexAIBot
+(allow: `Bash(/home/ahagent/ask-nexai/bin/ask-opencode *)`).
+API key dibaca dari file 0600 `.opencode-env` dan TIDAK PERNAH dicetak,
+di-log, atau dikembalikan ke sesi — hanya jawaban model yang ke stdout.
+
+Pakai:  ask-opencode "pertanyaan pengguna"
+Keluar: 0 + jawaban di stdout | 2 + baris "ERROR: ..." di stdout (detail di stderr)
+"""
+from __future__ import annotations
+
+import json
+import os
+import sys
+import time
+import urllib.error
+import urllib.request
+
+ENV_FILE = os.environ.get(
+    "ASKOPENCODE_ENV", "/home/ahagent/ask-nexai/.opencode-env"
+)
+MODEL_PRIMARY = "openagentic/muse-spark-1.3-free"
+MODEL_FALLBACK = "muse-spark-1.3-free"
+MAX_TOKENS = 1000
+TIMEOUT = 30
+SYSTEM_PROMPT = (
+    "Jawab dalam Bahasa Indonesia yang hangat dan sopan. "
+    "Ringkas: 3-6 kalimat atau bullet pendek, untuk pembaca non-teknis. "
+    "Jangan menyebut nama file, path, kode, tabel database, atau istilah internal. "
+    "Kalau informasinya tidak kamu ketahui, katakan jujur, jangan mengarang."
+)
+
+
+def load_env(path: str) -> dict:
+    out: dict = {}
+    with open(path, encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if line and not line.startswith("#") and "=" in line:
+                k, _, v = line.partition("=")
+                v = v.strip().strip('"').strip("'")
+                out[k.strip()] = v
+    return out
+
+
+def post_completion(base_url: str, api_key: str, model: str,
+                    question: str) -> str:
+    payload = {
+        "model": model,
+        "messages": [
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": question},
+        ],
+        "max_tokens": MAX_TOKENS,
+    }
+    req = urllib.request.Request(
+        base_url.rstrip("/") + "/chat/completions",
+        data=json.dumps(payload).encode("utf-8"),
+        headers={
+            "Authorization": "Bearer " + api_key,
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
+    last_error = None
+    for attempt in (1, 2):
+        try:
+            with urllib.request.urlopen(req, timeout=TIMEOUT) as resp:
+                body = json.loads(resp.read().decode("utf-8"))
+            break
+        except urllib.error.HTTPError as e:
+            if 500 <= e.code < 600 and attempt == 1:
+                print(f"upstream HTTP {e.code}, retry 1x...",
+                      file=sys.stderr)
+                time.sleep(5)
+                continue
+            try:
+                detail = e.read().decode("utf-8")[:300]
+            except Exception:
+                detail = ""
+            raise RuntimeError(f"HTTP {e.code}: {detail}") from e
+    try:
+        return body["choices"][0]["message"]["content"]
+    except (KeyError, IndexError, TypeError) as e:
+        raise RuntimeError("respons tak terduga: "
+                           + json.dumps(body)[:300]) from e
+
+
+def ask(question: str) -> tuple[int, str]:
+    try:
+        env = load_env(ENV_FILE)
+    except OSError as e:
+        return 2, f"ERROR: tidak bisa baca config ({e})"
+    base_url = env.get("OPENCODE_BASE_URL", "")
+    api_key = env.get("OPENCODE_API_KEY", "")
+    if not base_url or not api_key:
+        return 2, "ERROR: OPENCODE_BASE_URL / OPENCODE_API_KEY belum diisi"
+    try:
+        return 0, post_completion(base_url, api_key, MODEL_PRIMARY, question)
+    except RuntimeError as e:
+        msg = str(e)
+        if "HTTP 400" in msg and "model" in msg.lower():
+            print(f"model utama ditolak, coba {MODEL_FALLBACK}",
+                  file=sys.stderr)
+            try:
+                return 0, post_completion(base_url, api_key,
+                                          MODEL_FALLBACK, question)
+            except Exception as e2:
+                return 2, f"ERROR: {e2}"
+        return 2, f"ERROR: {e}"
+    except Exception as e:
+        return 2, f"ERROR: {e}"
+
+
+def main(argv: list[str]) -> int:
+    question = " ".join(argv[1:]).strip()
+    if not question and not sys.stdin.isatty():
+        question = sys.stdin.read().strip()
+    if not question:
+        print("Pakai: ask-opencode \"pertanyaan\"", file=sys.stderr)
+        return 2
+    code, out = ask(question)
+    print(out)
+    return code
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv))

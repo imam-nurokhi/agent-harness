@@ -7,6 +7,8 @@ Applies to every role. Read this before the role-specific file.
 - Work only inside the assigned worktree path. Never touch another agent's worktree.
 - Never read, print, or commit `.env`, `*.pem`, `*.key`, tokens, or passwords.
 - Never run migrations, deploys, `git push`, or merges without explicit human approval.
+- Pull before push, always: `git pull --rebase` first, re-run tests, then push.
+- Never push to `main`/`master`/`production`/`prod`; use `dev` or `staging`.
 - Production is off-limits unless the task states otherwise in writing.
 - Mark every assumption with `ASSUMPTION:` so it is greppable.
 

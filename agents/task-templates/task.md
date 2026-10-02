@@ -33,6 +33,12 @@
 - [ ] Build
 - [ ] Diff reviewed for secrets and stray files
 
+## Progress
+<Update this as you work. Another agent in another session must be able to read
+this and continue without redoing anything. One line per step, tick as you go.>
+
+- [ ] <step>
+
 ## Report
 - Scope done:
 - Files changed:

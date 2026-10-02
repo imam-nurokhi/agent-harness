@@ -3,10 +3,10 @@
     {
       "id": "standup",
       "label": "Morning floor standup",
-      "schedule": "daily 09:00",
+      "schedule": "daily 07:00",
       "role": "lead",
       "enabled": true,
-      "last_run": "",
+      "last_run": "2026-09-21 00:04",
       "prompt": "Review every open task in ~/AI-Workspace/agents/tasks. For each: state the role assigned, whether a worktree exists, how many acceptance criteria are met, and what is blocking it. Do not change any file. End with the three tasks I should push on today and why."
     },
     {
@@ -15,8 +15,9 @@
       "schedule": "weekly Mon 09:00",
       "role": "devops",
       "enabled": true,
-      "last_run": "",
-      "prompt": "For every project under ~/AI-Workspace/projects: report stale branches, uncommitted work, failing or missing test commands, and dependencies with known advisories. Read-only. Never merge, push, or install. Output a Markdown table ordered by severity."
+      "last_run": "2026-09-14 09:04",
+      "prompt": "Periksa kesehatan repository.\n\nPENTING: periksa HANYA project yang terdaftar di bawah. Project lain di projects/ sedang ON HOLD \u2014 jangan dibaca, jangan disentuh.\n\nUntuk tiap project laporkan: branch yang tertinggal dari remote, pekerjaan yang belum di-commit, perintah test yang gagal atau tidak ada, dan dependency dengan advisory keamanan.\n\nREAD-ONLY: jangan merge, push, install, atau ubah file apa pun.\nOutput tabel Markdown diurut berdasarkan severity.\n\nPROJECT YANG BOLEH DIPERIKSA:\n{PROJECTS}",
+      "per_project": true
     },
     {
       "id": "drift",
@@ -24,8 +25,9 @@
       "schedule": "weekly Fri 16:00",
       "role": "docs",
       "enabled": true,
-      "last_run": "",
-      "prompt": "Compare each project's AGENTS.md and README against the actual code. Flag every command that no longer works, every documented path that no longer exists, and every behaviour change since the last edit. Propose the exact diff but do not apply it."
+      "last_run": "2026-09-13 09:19",
+      "prompt": "Periksa dokumentasi yang menyimpang dari kode.\n\nPENTING: periksa HANYA project yang terdaftar di bawah. Project lain di projects/ sedang ON HOLD \u2014 jangan dibaca, jangan disentuh.\n\nUntuk tiap project bandingkan AGENTS.md dan README dengan kode nyata. Tandai setiap perintah yang sudah tidak jalan, path terdokumentasi yang sudah tidak ada, dan perubahan perilaku sejak dokumen terakhir disunting.\n\nUsulkan diff persisnya tetapi JANGAN menerapkannya. READ-ONLY.\n\nPROJECT YANG BOLEH DIPERIKSA:\n{PROJECTS}",
+      "per_project": true
     },
     {
       "id": "sweep",
@@ -33,7 +35,7 @@
       "schedule": "weekly Sun 20:00",
       "role": "lead",
       "enabled": true,
-      "last_run": "",
+      "last_run": "2026-09-13 21:07",
       "prompt": "List every worktree under ~/AI-Workspace/worktrees with no commit in the last 7 days. For each, say whether the work looks finished, abandoned, or blocked, and recommend keep or remove. Remove nothing yourself."
     }
   ]

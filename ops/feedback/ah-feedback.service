@@ -1,0 +1,24 @@
+[Unit]
+Description=AH widget feedback collector (loopback only)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+EnvironmentFile=/home/ahagent/AI-Workspace/.env
+Type=simple
+WorkingDirectory=/home/ahagent/AI-Workspace
+Environment=HOME=/home/ahagent
+Environment=PATH=/home/ahagent/.local/bin:/usr/local/bin:/usr/bin:/bin
+Environment=AH_FEEDBACK_HOST=127.0.0.1
+Environment=AH_FEEDBACK_PORT=7788
+Environment=AH_FEEDBACK_DATA_DIR=/var/lib/nexora-feedback
+ExecStart=/usr/bin/python3 /home/ahagent/AI-Workspace/ops/feedback/collector.py
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+UMask=0077
+
+[Install]
+WantedBy=default.target
